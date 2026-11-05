@@ -70,7 +70,7 @@ input.t{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;
   <div class="card">
     <div class="seg" id="type"></div>
     <div class="amt"><span id="cur">NT$</span><input id="amount" inputmode="decimal" placeholder="0" autocomplete="off"></div>
-    <div class="lbl"><b id="accLbl">從哪個帳戶</b><a href="#" id="allBtn">顯示全部</a></div>
+    <div id="mvHint" class="hide" style="font-size:12px;color:#888;margin:-6px 0 10px"></div><div class="lbl"><b id="accLbl">從哪個帳戶</b><a href="#" id="allBtn">顯示全部</a></div>
     <div class="chips" id="accs"></div>
     <div id="toBox" class="hide"><div class="lbl"><b>轉到哪個帳戶</b></div><div class="chips" id="tos"></div></div>
     <div id="catBox"><div class="lbl"><b id="catLbl">分類</b></div><div class="chips" id="cats"></div></div>
@@ -88,12 +88,13 @@ input.t{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;
 var API = 'https://script.google.com/macros/s/AKfycbxe_9kU_ge7FZ14slQFAaRRCwp24Fwy7FrUDuxpkiw9HI12kBP7pWKb7hDDDqTLc_Iv/exec';
 var KEY = '';
 var D = null, S = {who:'', type:'支出', acc:'', to:'', cat:'', all:false, busy:false};
-var TYPES = ['支出','收入','轉帳','退款'];
+var TYPES = ['支出','收入','轉帳','退款','市值'];
 var ORDER = {
   '支出':['信用卡','現金','電子支付','銀行','其他'],
   '退款':['銀行','現金','電子支付','信用卡','其他'],
   '收入':['銀行','現金','電子支付','其他','信用卡'],
-  '轉帳':['銀行','現金','電子支付','其他','信用卡','投資']
+  '轉帳':['銀行','現金','電子支付','其他','信用卡','投資'],
+  '市值':['投資']
 };
 function $(id){ return document.getElementById(id); }
 function ls(k, v){ try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
@@ -122,7 +123,7 @@ function mine(a){ var o = a.owner || ''; return !o || o === '共同' || o === S.
 function accList(side){
   var t = S.type;
   var list = D.accounts.filter(function(a){
-    if (t !== '轉帳' && a.type === '投資') return false;
+    if (t === '市值') { if (a.type !== '投資') return false; } else if (t !== '轉帳' && a.type === '投資') return false;
     if (side === 'to') return true;
     return S.all || mine(a);
   });
@@ -150,12 +151,12 @@ function render(){
   $('type').innerHTML = TYPES.map(function(t){ return '<button class="' + (t === S.type ? 'on' : '') + '" data-t="' + t + '">' + t + '</button>'; }).join('');
   Array.prototype.forEach.call($('type').querySelectorAll('button'), function(b){ b.onclick = function(){
     S.type = b.getAttribute('data-t'); S.cat = ''; S.to = '';
-    var a = accOf(S.acc); if (a && S.type !== '轉帳' && a.type === '投資') S.acc = '';
+    var a = accOf(S.acc); if (a && S.type !== '轉帳' && a.type === '投資') S.acc = ''; if (a && S.type === '市值' && a.type !== '投資') S.acc = '';
     render();
   }; });
 
   var t = S.type;
-  $('accLbl').textContent = t === '收入' || t === '退款' ? '入帳到哪個帳戶' : t === '轉帳' ? '從哪個帳戶轉出' : '從哪個帳戶付';
+  $('accLbl').textContent = t === '市值' ? '更新哪個投資帳戶' : t === '收入' || t === '退款' ? '入帳到哪個帳戶' : t === '轉帳' ? '從哪個帳戶轉出' : '從哪個帳戶付';
   $('allBtn').textContent = S.all ? '只看自己的' : '顯示全部';
   $('allBtn').className = D.accounts.some(function(a){ return !mine(a); }) ? '' : 'hide';
   chips($('accs'), accList('from'), S.acc, function(n){ S.acc = n; render(); }, curTag);
@@ -163,11 +164,12 @@ function render(){
   $('toBox').className = t === '轉帳' ? '' : 'hide';
   if (t === '轉帳') chips($('tos'), accList('to').filter(function(a){ return a.name !== S.acc; }), S.to, function(n){ S.to = n; render(); }, curTag);
 
-  $('catBox').className = t === '轉帳' ? 'hide' : '';
+  $('catBox').className = (t === '轉帳' || t === '市值') ? 'hide' : '';
   $('catLbl').textContent = t === '退款' ? '抵扣哪個分類' : '分類';
-  if (t !== '轉帳') chips($('cats'), D.cats[t === '收入' ? '收入' : '支出'] || [], S.cat, function(n){ S.cat = n; render(); });
+  if (t !== '轉帳' && t !== '市值') chips($('cats'), D.cats[t === '收入' ? '收入' : '支出'] || [], S.cat, function(n){ S.cat = n; render(); });
 
   var a = accOf(S.acc); $('cur').textContent = sym(a ? a.currency : 'TWD');
+  var hint = $('mvHint'); if (hint) { if (t === '市值') { var bc = null; try { bc = JSON.parse(localStorage.getItem('balCache') || 'null'); } catch (e) {} var cb = null; if (bc && a) bc.accounts.forEach(function(x){ if (x.name === a.name) cb = x; }); hint.textContent = '輸入現在的「總市值」，會自動算出漲跌記成投資損益' + (cb ? '（帳上目前 ' + sym(cb.currency) + Number(cb.balance).toLocaleString('en-US', {maximumFractionDigits:2}) + '）' : ''); hint.className = ''; } else hint.className = 'hide'; }
   renderBudget(); renderRecent();
 }
 function renderBudget(){
@@ -182,10 +184,10 @@ function renderRecent(){
   var el = $('recent');
   if (!D.recent.length) { el.innerHTML = '<div style="color:#aaa;font-size:13px">還沒有記錄</div>'; return; }
   el.innerHTML = D.recent.map(function(r){
-    var inc = r.type === '收入', ref = r.type === '支出' && r.amount < 0, tr = r.type === '轉帳';
-    var col = r.pending ? '#bbb' : inc ? 'var(--blue)' : ref ? 'var(--green)' : tr ? '#777' : (Math.abs(r.base) >= 1000 ? 'var(--red)' : '#222');
-    var sign = inc || ref ? '+' : tr ? '' : '-';
-    var name = tr ? (r.from + ' → ' + r.to) : ((ref ? '↩ 退款・' : '') + (r.cat || r.type));
+    var inc = r.type === '收入', ref = r.type === '支出' && r.amount < 0, tr = r.type === '轉帳', adj = r.type === '調整';
+    var col = r.pending ? '#bbb' : adj ? (r.amount >= 0 ? 'var(--blue)' : 'var(--red)') : inc ? 'var(--blue)' : ref ? 'var(--green)' : tr ? '#777' : (Math.abs(r.base) >= 1000 ? 'var(--red)' : '#222');
+    var sign = adj ? (r.amount >= 0 ? '+' : '-') : inc || ref ? '+' : tr ? '' : '-';
+    var name = adj ? ('📈 市值・' + r.from) : tr ? (r.from + ' → ' + r.to) : ((ref ? '↩ 退款・' : '') + (r.cat || r.type));
     var note = r.note && !/^退款／/.test(r.note) ? r.note : '';
     return '<div class="rec"><div class="d">' + esc(r.date.slice(5)) + '</div>' +
       '<div class="n">' + esc(name) + (note ? '<i>' + esc(note) + '</i>' : '') + '<i>' + (tr ? '' : esc(r.from)) + (r.who ? '・' + esc(r.who) : '') + '</i></div>' +
@@ -206,13 +208,13 @@ function submit(){
   if (!(parseFloat(amt) > 0)) return toast('請輸入金額', true);
   if (!S.acc) return toast('請選帳戶', true);
   if (S.type === '轉帳' && !S.to) return toast('請選轉入帳戶', true);
-  if (S.type !== '轉帳' && !S.cat) return toast('請選分類', true);
+  if (S.type !== '轉帳' && S.type !== '市值' && !S.cat) return toast('請選分類', true);
   S.busy = true; $('go').disabled = true; $('go').textContent = '記帳中…';
   if (!S.rid) S.rid = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   var d = {who:S.who, type:S.type, amount:amt, from:S.acc, to:S.to, cat:S.cat, note:$('note').value, date:$('date').value, rid:S.rid};
   var keep = {amount:$('amount').value, note:$('note').value, cat:S.cat, to:S.to};
   var a = accOf(S.acc), n = parseFloat(amt);
-  D.recent = [{row:0, pending:true, date:(d.date || today()).replace(/-/g, '/'), type:(S.type === '退款' ? '支出' : S.type),
+  D.recent = [{row:0, pending:true, date:(d.date || today()).replace(/-/g, '/'), type:(S.type === '退款' ? '支出' : S.type === '市值' ? '調整' : S.type),
     amount:(S.type === '退款' ? -n : n), cur:(a ? a.currency : 'TWD'), base:0, cat:(S.type === '轉帳' ? '' : S.cat),
     from:S.acc, to:S.to, note:'記帳中…', who:S.who}].concat(D.recent);
   $('amount').value = ''; $('note').value = ''; S.cat = ''; S.to = '';
