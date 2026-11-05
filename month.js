@@ -87,7 +87,7 @@
     });
   }
 
-  function m$(n) { return (n < 0 ? '-' : '') + fmt(n, 'TWD'); }
+  function m$(n) { n = Math.round(n); return (n < 0 ? '-' : '') + fmt(n, 'TWD'); }
   function kv(k, v, cls, vcol) {
     return '<div class="kv ' + (cls || '') + '"><span>' + k + '</span><span' + (vcol ? ' style="color:' + vcol + '"' : '') + '>' + v + '</span></div>';
   }
@@ -131,7 +131,7 @@
       var note = r.note && !/^退款／/.test(r.note) ? r.note : '';
       h += '<div class="rec"' + (r.out ? ' style="color:#aaa"' : '') + '><div class="d">' + esc(r.date.slice(5)) + '</div>' +
         '<div class="n">' + esc(name) + (note ? '<i>' + esc(note) + '</i>' : '') + '<i>' + esc(r.from) + (r.who ? '・' + esc(r.who) : '') + '</i></div>' +
-        '<div class="a" style="color:' + col + '">' + (inc || ref ? '+' : '-') + fmt(r.amount, r.cur) + '</div></div>';
+        '<div class="a" style="color:' + col + '">' + (inc || ref ? '+' : '-') + fmt(r.cur === 'TWD' || !r.cur ? Math.round(r.amount) : r.amount, r.cur) + '</div></div>';
     });
     h += '</div>';
     mv.innerHTML = h;
