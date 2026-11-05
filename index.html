@@ -238,5 +238,5 @@ $('keyGo').onclick = function(){ var k = readKey($('keyIn').value); if (!k) retu
 KEY = readKey(location.hash) || ls('key') || '';
 if (KEY) { ls('key', KEY); start(); } else { $('load').className = 'hide'; $('keyBox').className = 'card'; }
 </script>
-<script src="month.js"></script>
+<script>(function(){var s=document.createElement('script');s.src='month.js?t='+Date.now();document.body.appendChild(s);})();</script>
 </body></html>
