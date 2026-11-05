@@ -260,5 +260,5 @@ $('keyGo').onclick = function(){ var k = readKey($('keyIn').value); if (!k) retu
 KEY = readKey(location.hash) || ls('key') || '';
 if (KEY) { ls('key', KEY); start(); } else { $('load').className = 'hide'; $('keyBox').className = 'card'; }
 </script>
-<script>(function(){var s=document.createElement('script');s.src='month.js?t='+Date.now();document.body.appendChild(s);})();</script>
+<script>(function(){var t=Date.now(),s=document.createElement('script');s.src='month.js?t='+t;s.onload=function(){var b=document.createElement('script');b.src='bal.js?t='+t;document.body.appendChild(b);};document.body.appendChild(s);})();</script>
 </body></html>
