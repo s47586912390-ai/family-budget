@@ -5,23 +5,45 @@
     '.kv b{font-size:16px}.kv.sub{font-size:12px;color:#aaa;padding:1px 0 1px 14px}.kv.mute{color:#888}' +
     '.sep{border-top:1px solid #EEE9DE;margin:8px 0}' +
     '.bar{height:6px;border-radius:3px;background:#EEE9DE;margin:3px 0 8px}.bar i{display:block;height:6px;border-radius:3px;background:var(--sel)}' +
-    '.bar.out i{background:#C8C2B4}.mtitle{font-size:16px;font-weight:700;margin-bottom:6px}' +
+    '.bar.out i{background:#C8C2B4}.mtitle{font-size:16px;font-weight:700;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}' +
+    '.mtitle small{font-size:11px;color:#aaa;font-weight:400}' +
     '.legend{font-size:11px;color:#999;margin-bottom:6px}' +
-    '.pager{display:flex;align-items:center;justify-content:space-between;background:#fff;border-radius:14px;padding:6px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,.05)}' +
-    '.pager button{border:0;background:#ECE8DD;border-radius:10px;width:48px;height:40px;font-size:24px;color:#333;font-family:inherit}' +
-    '.pager button:disabled{opacity:.3}.pager span{font-size:17px;font-weight:700}' +
-    '.pager small{font-size:11px;color:#888;font-weight:400;margin-left:6px}';
+    '.pager{display:flex;align-items:center;gap:8px;background:#fff;border-radius:14px;padding:6px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,.05)}' +
+    '.pager button{border:0;background:#ECE8DD;border-radius:10px;width:48px;height:40px;font-size:24px;color:#333;font-family:inherit;flex:none}' +
+    '.pager button:disabled{opacity:.3}' +
+    '.pager select{flex:1;height:40px;border:1px solid #E6E2D8;border-radius:10px;background:#FAFAF7;font-size:17px;font-weight:700;text-align:center;text-align-last:center;color:#222;font-family:inherit;-webkit-appearance:none;appearance:none}';
   document.head.appendChild(css);
 
   var app = document.getElementById('app');
   var nav = document.createElement('div');
   nav.className = 'seg'; nav.id = 'view';
   nav.innerHTML = '<button class="on" data-v="0">記帳</button><button data-v="1">月報</button>';
-  var OFF = 0;
   app.insertBefore(nav, app.firstChild);
   var mv = document.createElement('div');
   mv.className = 'hide'; mv.id = 'monthView';
   app.appendChild(mv);
+
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function curYM() { var d = new Date(); return d.getFullYear() + '/' + pad(d.getMonth() + 1); }
+  function shift(ym, n) { var p = ym.split('/'); var d = new Date(+p[0], +p[1] - 1 + n, 1); return d.getFullYear() + '/' + pad(d.getMonth() + 1); }
+  function store(k, v) { try { if (v === undefined) return JSON.parse(localStorage.getItem(k) || 'null'); localStorage.setItem(k, JSON.stringify(v)); } catch (e) { return null; } }
+
+  var YM = curYM();
+  var MEM = {};
+  var FIRST = store('mFirst') || shift(curYM(), -3);
+
+  function cached(ym) { return MEM[ym] || store('m_' + ym); }
+  function save(ym, m) {
+    MEM[ym] = m; store('m_' + ym, m);
+    if (m.first && m.first !== FIRST) { FIRST = m.first; store('mFirst', FIRST); }
+  }
+  function fetchMonth(ym, ok, fail) {
+    if (!KEY) return fail && fail();
+    fetch(API + '?api=month&ym=' + encodeURIComponent(ym) + '&k=' + encodeURIComponent(KEY) + '&t=' + Date.now())
+      .then(function (r) { return r.json(); })
+      .then(function (j) { if (!j.ok) throw new Error(j.error || '發生錯誤'); save(ym, j.data); ok && ok(j.data); })
+      .catch(function (e) { fail && fail(e); });
+  }
 
   function show(v) {
     Array.prototype.forEach.call(nav.children, function (b) { b.className = b.getAttribute('data-v') == v ? 'on' : ''; });
@@ -30,36 +52,50 @@
       if (el === mv) el.className = v == 0 ? 'hide' : '';
       else el.style.display = v == 0 ? '' : 'none';
     });
-    if (v != 0) { OFF = 0; load(OFF); }
+    if (v != 0) { YM = curYM(); load(YM); }
   }
   nav.onclick = function (e) { var b = e.target.closest('button'); if (b) show(b.getAttribute('data-v')); };
+
+  function pager() {
+    var now = curYM(), opts = '', y = now, first = FIRST < now ? FIRST : now;
+    if (YM < first) first = YM;
+    while (y >= first) {
+      var lab = y + (y === now ? '（本月）' : y === shift(now, -1) ? '（上月）' : '');
+      opts += '<option value="' + y + '"' + (y === YM ? ' selected' : '') + '>' + lab + '</option>';
+      y = shift(y, -1);
+    }
+    return '<div class="pager"><button data-d="-1">‹</button><select id="ymSel">' + opts + '</select>' +
+      '<button data-d="1"' + (YM >= now ? ' disabled' : '') + '>›</button></div>';
+  }
+  mv.onclick = function (e) {
+    var b = e.target.closest('.pager button'); if (!b || b.disabled) return;
+    var n = shift(YM, Number(b.getAttribute('data-d'))); if (n > curYM()) return;
+    YM = n; load(YM);
+  };
+  mv.onchange = function (e) { if (e.target.id === 'ymSel') { YM = e.target.value; load(YM); } };
+
+  function load(ym) {
+    var c = cached(ym);
+    if (c) render(c, true); else mv.innerHTML = pager() + '<div class="load">載入中…</div>';
+    fetchMonth(ym, function (m) {
+      if (ym === YM) render(m, false);
+      var prev = shift(ym, -1);
+      if (prev >= FIRST && !MEM[prev]) fetchMonth(prev);
+    }, function (e) {
+      if (ym !== YM) return;
+      if (c) render(c, false, true); else { mv.innerHTML = pager(); toast((e && e.message) || '連線失敗', true); }
+    });
+  }
 
   function m$(n) { return (n < 0 ? '-' : '') + fmt(n, 'TWD'); }
   function kv(k, v, cls, vcol) {
     return '<div class="kv ' + (cls || '') + '"><span>' + k + '</span><span' + (vcol ? ' style="color:' + vcol + '"' : '') + '>' + v + '</span></div>';
   }
 
-  function ymOf(off) {
-    var d = new Date(); d = new Date(d.getFullYear(), d.getMonth() + off, 1);
-    var mm = d.getMonth() + 1; return d.getFullYear() + '/' + (mm < 10 ? '0' : '') + mm;
-  }
-  function pager(off) {
-    return '<div class="pager"><button data-d="-1">‹</button><span>' + ymOf(off) +
-      (off === 0 ? '<small>本月</small>' : off === -1 ? '<small>上月</small>' : '') +
-      '</span><button data-d="1"' + (off >= 0 ? ' disabled' : '') + '>›</button></div>';
-  }
-  mv.onclick = function (e) {
-    var b = e.target.closest('.pager button'); if (!b || b.disabled) return;
-    OFF = Math.min(0, OFF + Number(b.getAttribute('data-d'))); load(OFF);
-  };
-
-  function load(off) {
-    mv.innerHTML = pager(off) + '<div class="load">載入中…</div>';
-    api({ api: 'month', off: off }, function (m) { if (off === OFF) render(m, off); }, function () { mv.innerHTML = pager(off); });
-  }
-
-  function render(m, off) {
-    var h = pager(off) + '<div class="card"><div class="mtitle">📊 ' + esc(m.ym) + ' 收支</div>';
+  function render(m, updating, offline) {
+    var isNow = m.ym === curYM();
+    var tag = updating ? '更新中…' : offline ? '離線資料' : '';
+    var h = pager() + '<div class="card"><div class="mtitle"><span>📊 ' + esc(m.ym) + ' 收支</span><small>' + tag + '</small></div>';
     h += kv('實際總花費', '<b>' + m$(m.total) + '</b>');
     if (m.outCats.length) {
       h += kv('－ 不計入每月可花', m$(m.outBudget), 'mute');
@@ -69,7 +105,7 @@
     if (m.target > 0 && m.items.length) {
       var left = m.target - m.inBudget;
       h += kv('目標', m$(m.target), 'mute');
-      h += kv(left >= 0 ? (off === 0 ? '還能花' : '省下') : '超支', '<b>' + m$(Math.abs(left)) + '</b>', '', left >= 0 ? 'var(--green)' : 'var(--red)');
+      h += kv(left >= 0 ? (isNow ? '還能花' : '省下') : '超支', '<b>' + m$(Math.abs(left)) + '</b>', '', left >= 0 ? 'var(--green)' : 'var(--red)');
     }
     var bal = m.income - m.total;
     h += '<div class="sep"></div>' + kv('收入', m$(m.income), '', 'var(--blue)');
@@ -100,4 +136,7 @@
     h += '</div>';
     mv.innerHTML = h;
   }
+
+  // 開 App 後先在背景抓好本月，點「月報」時就能馬上顯示
+  setTimeout(function () { fetchMonth(curYM()); }, 2500);
 })();
