@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="zh-Hant"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>家庭記帳</title>
+<meta name="theme-color" content="#1E5B3A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="家庭記帳">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+<style>
+:root{--bg:#F6F4EE;--card:#FFFFFF;--ink:#222;--mute:#888;--line:#E6E2D8;--brand:#8A5A00;--hi:#FFF4D6;--sel:#1E5B3A;--red:#C0392B;--blue:#1F6FB2;--green:#1E8A4C}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg)}
+body{margin:0;color:var(--ink);font-family:-apple-system,"PingFang TC","Noto Sans TC",sans-serif;font-size:15px}
+.wrap{max-width:520px;margin:0 auto;padding:calc(12px + env(safe-area-inset-top)) 14px calc(40px + env(safe-area-inset-bottom))}
+.top{background:var(--hi);border-radius:16px;padding:14px 16px;margin-bottom:12px}
+.top .k{font-size:13px;color:var(--brand)}
+.top .v{font-size:30px;font-weight:800;color:var(--brand);line-height:1.2}
+.top .s{font-size:12px;color:#9A7A3A}
+.top.over{background:#FBE3E0}.top.over .k,.top.over .v{color:var(--red)}
+.row{display:flex;gap:8px;align-items:center}
+.seg{display:flex;background:#ECE8DD;border-radius:12px;padding:3px;gap:3px;margin-bottom:10px}
+.seg button{flex:1;border:0;background:transparent;padding:9px 0;border-radius:9px;font-size:15px;color:#555;font-weight:600;font-family:inherit}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.card{background:var(--card);border-radius:16px;padding:14px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+.lbl{font-size:12px;color:var(--mute);margin:2px 0 6px;display:flex;justify-content:space-between}
+.lbl a{color:var(--blue);text-decoration:none}
+.amt{display:flex;align-items:baseline;border-bottom:2px solid var(--line);padding:2px 0 6px;margin-bottom:12px}
+.amt span{font-size:20px;color:var(--mute);margin-right:6px;min-width:30px}
+.amt input{flex:1;border:0;outline:0;font-size:34px;font-weight:800;width:100%;background:transparent;color:var(--ink);font-family:inherit}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.chip{border:1px solid var(--line);background:#FAFAF7;border-radius:10px;padding:8px 11px;font-size:14px;color:#333;font-family:inherit}
+.chip.on{background:var(--sel);border-color:var(--sel);color:#fff}
+.chip small{opacity:.6;margin-left:3px;font-size:11px}
+input.t{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:16px;background:#FAFAF7;outline:0;font-family:inherit;color:var(--ink)}
+.go{width:100%;border:0;background:var(--sel);color:#fff;font-size:18px;font-weight:700;padding:14px;border-radius:14px;margin-top:4px;font-family:inherit}
+.go:disabled{opacity:.5}
+.rec{display:flex;align-items:center;padding:8px 0;border-bottom:1px solid #F0EDE5;font-size:13px}
+.rec:last-child{border-bottom:0}
+.rec .d{width:44px;color:var(--mute);font-size:12px}
+.rec .n{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rec .n i{font-style:normal;color:var(--mute);font-size:11px;margin-left:4px}
+.rec .a{margin-left:8px;font-weight:600;white-space:nowrap}
+.rec .x{border:0;background:transparent;color:#bbb;font-size:18px;padding:0 0 0 10px}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;max-width:90%;text-align:center;z-index:9}
+.toast.show{opacity:.95}.toast.err{background:var(--red)}
+.hide{display:none!important}
+.load{text-align:center;color:var(--mute);padding:60px 0}
+.mask{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:8;padding:20px}
+.dlg{background:#fff;border-radius:16px;padding:18px;width:100%;max-width:340px}
+.dlg p{margin:0 0 14px;font-size:15px}
+.dlg .row button{flex:1;border:0;border-radius:10px;padding:11px;font-size:15px;font-family:inherit}
+</style></head><body><div class="wrap">
+<div id="load" class="load">載入中…</div>
+
+<div id="keyBox" class="card hide">
+  <div class="lbl"><b>第一次使用</b></div>
+  <p style="font-size:14px;margin:0 0 10px">請貼上完整的記帳網址（含 # 後面那段），或只貼鑰匙。</p>
+  <input class="t" id="keyIn" placeholder="https://…#k=xxxx 或 xxxx" autocomplete="off">
+  <button class="go" id="keyGo" style="margin-top:10px">開始使用</button>
+</div>
+
+<div id="app" class="hide">
+  <div class="seg" id="who"></div>
+  <div class="top" id="top"><div class="k">本月還能花</div><div class="v" id="remain">—</div><div class="s" id="spent"></div></div>
+  <div class="card">
+    <div class="seg" id="type"></div>
+    <div class="amt"><span id="cur">NT$</span><input id="amount" inputmode="decimal" placeholder="0" autocomplete="off"></div>
+    <div class="lbl"><b id="accLbl">從哪個帳戶</b><a href="#" id="allBtn">顯示全部</a></div>
+    <div class="chips" id="accs"></div>
+    <div id="toBox" class="hide"><div class="lbl"><b>轉到哪個帳戶</b></div><div class="chips" id="tos"></div></div>
+    <div id="catBox"><div class="lbl"><b id="catLbl">分類</b></div><div class="chips" id="cats"></div></div>
+    <div class="row" style="margin-bottom:12px"><input class="t" id="note" placeholder="備註（選填）" style="flex:2"><input class="t" id="date" type="date" style="flex:1.3"></div>
+    <button class="go" id="go">記下</button>
+  </div>
+  <div class="card"><div class="lbl"><b>最近記錄</b><span>點 × 刪除</span></div><div id="recent"></div></div>
+</div></div>
+
+<div id="mask" class="mask hide"><div class="dlg"><p id="dlgMsg"></p>
+  <div class="row"><button id="dlgNo" style="background:#ECE8DD">取消</button><button id="dlgYes" style="background:var(--red);color:#fff">刪除</button></div></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+var API = 'https://script.google.com/macros/s/AKfycbxe_9kU_ge7FZ14slQFAaRRCwp24Fwy7FrUDuxpkiw9HI12kBP7pWKb7hDDDqTLc_Iv/exec';
+var KEY = '';
+var D = null, S = {who:'', type:'支出', acc:'', to:'', cat:'', all:false, busy:false};
+var TYPES = ['支出','收入','轉帳','退款'];
+var ORDER = {
+  '支出':['信用卡','現金','電子支付','銀行','其他'],
+  '退款':['銀行','現金','電子支付','信用卡','其他'],
+  '收入':['銀行','現金','電子支付','其他','信用卡'],
+  '轉帳':['銀行','現金','電子支付','其他','信用卡','投資']
+};
+function $(id){ return document.getElementById(id); }
+function ls(k, v){ try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function sym(c){ return (D && D.symbols && D.symbols[c]) || (c + ' '); }
+function fmt(n, c){ return sym(c || 'TWD') + Math.abs(n).toLocaleString('en-US', {maximumFractionDigits:2}); }
+function toast(m, err){ var t = $('toast'); t.textContent = m; t.className = 'toast show' + (err ? ' err' : ''); clearTimeout(t._t); t._t = setTimeout(function(){ t.className = 'toast'; }, err ? 3500 : 2000); }
+function today(){ var d = new Date(), m = d.getMonth() + 1, dd = d.getDate(); return d.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (dd < 10 ? '0' : '') + dd; }
+
+function api(params, ok, fail){
+  var q = Object.keys(params).map(function(k){ return k + '=' + encodeURIComponent(params[k]); }).join('&');
+  fetch(API + '?' + q + '&k=' + encodeURIComponent(KEY) + '&t=' + Date.now(), {redirect:'follow'})
+    .then(function(r){ return r.json(); })
+    .then(function(j){ if (!j.ok) throw new Error(j.error || '發生錯誤'); ok(j.data); })
+    .catch(function(e){ S.busy = false; $('go').disabled = false; toast((e && e.message) || '連線失敗', true); if (fail) fail(e); });
+}
+
+function confirmBox(msg, yes){
+  $('dlgMsg').textContent = msg; $('mask').className = 'mask';
+  $('dlgNo').onclick = function(){ $('mask').className = 'mask hide'; };
+  $('dlgYes').onclick = function(){ $('mask').className = 'mask hide'; yes(); };
+}
+
+function accOf(n){ for (var i = 0; i < D.accounts.length; i++) if (D.accounts[i].name === n) return D.accounts[i]; return null; }
+function mine(a){ var o = a.owner || ''; return !o || o === '共同' || o === S.who; }
+function accList(side){
+  var t = S.type;
+  var list = D.accounts.filter(function(a){
+    if (t !== '轉帳' && a.type === '投資') return false;
+    if (side === 'to') return true;
+    return S.all || mine(a);
+  });
+  var ord = ORDER[t] || ORDER['支出'];
+  list.sort(function(a, b){
+    var ia = ord.indexOf(a.type), ib = ord.indexOf(b.type); if (ia < 0) ia = 9; if (ib < 0) ib = 9;
+    var oa = a.owner === S.who ? 0 : 1, ob = b.owner === S.who ? 0 : 1;
+    return oa - ob || ia - ib;
+  });
+  return list;
+}
+function chips(el, items, cur, onPick, sub){
+  el.innerHTML = items.map(function(x){
+    var n = typeof x === 'string' ? x : x.name, s = sub ? sub(x) : '';
+    return '<button class="chip' + (n === cur ? ' on' : '') + '" data-n="' + esc(n) + '">' + esc(n) + (s ? '<small>' + esc(s) + '</small>' : '') + '</button>';
+  }).join('') || '<span style="color:#aaa;font-size:13px">沒有可選的</span>';
+  Array.prototype.forEach.call(el.querySelectorAll('.chip'), function(b){ b.onclick = function(){ onPick(b.getAttribute('data-n')); }; });
+}
+function curTag(a){ return a.currency !== 'TWD' ? a.currency : ''; }
+
+function render(){
+  $('who').innerHTML = D.people.map(function(p){ return '<button class="' + (p === S.who ? 'on' : '') + '" data-p="' + esc(p) + '">' + esc(p) + '</button>'; }).join('');
+  Array.prototype.forEach.call($('who').querySelectorAll('button'), function(b){ b.onclick = function(){ S.who = b.getAttribute('data-p'); ls('who', S.who); S.acc = ''; S.to = ''; render(); }; });
+
+  $('type').innerHTML = TYPES.map(function(t){ return '<button class="' + (t === S.type ? 'on' : '') + '" data-t="' + t + '">' + t + '</button>'; }).join('');
+  Array.prototype.forEach.call($('type').querySelectorAll('button'), function(b){ b.onclick = function(){
+    S.type = b.getAttribute('data-t'); S.cat = ''; S.to = '';
+    var a = accOf(S.acc); if (a && S.type !== '轉帳' && a.type === '投資') S.acc = '';
+    render();
+  }; });
+
+  var t = S.type;
+  $('accLbl').textContent = t === '收入' || t === '退款' ? '入帳到哪個帳戶' : t === '轉帳' ? '從哪個帳戶轉出' : '從哪個帳戶付';
+  $('allBtn').textContent = S.all ? '只看自己的' : '顯示全部';
+  $('allBtn').className = D.accounts.some(function(a){ return !mine(a); }) ? '' : 'hide';
+  chips($('accs'), accList('from'), S.acc, function(n){ S.acc = n; render(); }, curTag);
+
+  $('toBox').className = t === '轉帳' ? '' : 'hide';
+  if (t === '轉帳') chips($('tos'), accList('to').filter(function(a){ return a.name !== S.acc; }), S.to, function(n){ S.to = n; render(); }, curTag);
+
+  $('catBox').className = t === '轉帳' ? 'hide' : '';
+  $('catLbl').textContent = t === '退款' ? '抵扣哪個分類' : '分類';
+  if (t !== '轉帳') chips($('cats'), D.cats[t === '收入' ? '收入' : '支出'] || [], S.cat, function(n){ S.cat = n; render(); });
+
+  var a = accOf(S.acc); $('cur').textContent = sym(a ? a.currency : 'TWD');
+  renderBudget(); renderRecent();
+}
+function renderBudget(){
+  var b = D.budget; if (!b) { $('top').className = 'hide'; return; }
+  var r = b.remain; $('top').className = 'top' + (r < 0 ? ' over' : '');
+  $('top').querySelector('.k').textContent = r < 0 ? '本月已超支' : '本月還能花';
+  $('remain').textContent = fmt(r, 'TWD');
+  $('spent').textContent = '本月已花 ' + fmt(b.spent, 'TWD') + '／目標 ' + fmt(b.monthly, 'TWD');
+}
+function renderRecent(){
+  var el = $('recent');
+  if (!D.recent.length) { el.innerHTML = '<div style="color:#aaa;font-size:13px">還沒有記錄</div>'; return; }
+  el.innerHTML = D.recent.map(function(r){
+    var inc = r.type === '收入', ref = r.type === '支出' && r.amount < 0, tr = r.type === '轉帳';
+    var col = inc ? 'var(--blue)' : ref ? 'var(--green)' : tr ? '#777' : (Math.abs(r.base) >= 1000 ? 'var(--red)' : '#222');
+    var sign = inc || ref ? '+' : tr ? '' : '-';
+    var name = tr ? (r.from + ' → ' + r.to) : ((ref ? '↩ 退款・' : '') + (r.cat || r.type));
+    var note = r.note && !/^退款／/.test(r.note) ? r.note : '';
+    return '<div class="rec"><div class="d">' + esc(r.date.slice(5)) + '</div>' +
+      '<div class="n">' + esc(name) + (note ? '<i>' + esc(note) + '</i>' : '') + '<i>' + (tr ? '' : esc(r.from)) + (r.who ? '・' + esc(r.who) : '') + '</i></div>' +
+      '<div class="a" style="color:' + col + '">' + sign + fmt(r.amount, r.cur) + '</div>' +
+      '<button class="x" data-r="' + r.row + '">×</button></div>';
+  }).join('');
+  Array.prototype.forEach.call(el.querySelectorAll('.x'), function(b){ b.onclick = function(){
+    var row = b.getAttribute('data-r');
+    confirmBox('刪除 #' + row + '？', function(){
+      api({api:'del', row:row}, function(res){ D.budget = res.budget; D.recent = res.recent; renderBudget(); renderRecent(); toast('已刪除 #' + row); });
+    });
+  }; });
+}
+
+function submit(){
+  if (S.busy) return;
+  var amt = $('amount').value.replace(/,/g, '').trim();
+  if (!(parseFloat(amt) > 0)) return toast('請輸入金額', true);
+  if (!S.acc) return toast('請選帳戶', true);
+  if (S.type === '轉帳' && !S.to) return toast('請選轉入帳戶', true);
+  if (S.type !== '轉帳' && !S.cat) return toast('請選分類', true);
+  S.busy = true; $('go').disabled = true;
+  var d = {who:S.who, type:S.type, amount:amt, from:S.acc, to:S.to, cat:S.cat, note:$('note').value, date:$('date').value};
+  api({api:'add', d:JSON.stringify(d)}, function(res){
+    S.busy = false; $('go').disabled = false;
+    D.budget = res.budget; D.recent = res.recent;
+    $('amount').value = ''; $('note').value = ''; S.cat = ''; S.to = '';
+    render(); toast(res.msg);
+  });
+}
+
+function start(){
+  $('keyBox').className = 'card hide'; $('load').className = 'load';
+  api({api:'init'}, function(d){
+    D = d; S.who = ls('who') || ''; if (D.people.indexOf(S.who) < 0) S.who = D.people[0] || '';
+    $('load').className = 'hide'; $('app').className = ''; render();
+  }, function(){
+    $('load').className = 'hide'; $('keyBox').className = 'card';
+  });
+}
+function readKey(s){
+  s = String(s || '').trim(); var m = s.match(/[#&?]k=([A-Za-z0-9]+)/);
+  return m ? m[1] : (/^[A-Za-z0-9]{8,}$/.test(s) ? s : '');
+}
+
+$('go').onclick = submit;
+$('allBtn').onclick = function(e){ e.preventDefault(); S.all = !S.all; render(); };
+$('date').value = today();
+$('keyGo').onclick = function(){ var k = readKey($('keyIn').value); if (!k) return toast('看不出鑰匙，請再貼一次', true); KEY = k; ls('key', k); start(); };
+
+KEY = readKey(location.hash) || ls('key') || '';
+if (KEY) { ls('key', KEY); start(); } else { $('load').className = 'hide'; $('keyBox').className = 'card'; }
+</script>
+</body></html>
