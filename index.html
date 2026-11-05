@@ -72,7 +72,7 @@ input.t{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;
     <div class="amt"><span id="cur">NT$</span><input id="amount" inputmode="decimal" placeholder="0" autocomplete="off"></div>
     <div id="mvHint" class="hide" style="font-size:12px;color:#888;margin:-6px 0 10px"></div><div class="lbl"><b id="accLbl">從哪個帳戶</b><a href="#" id="allBtn">顯示全部</a></div>
     <div class="chips" id="accs"></div>
-    <div id="toBox" class="hide"><div class="lbl"><b>轉到哪個帳戶</b></div><div class="chips" id="tos"></div></div>
+    <div id="toBox" class="hide"><div class="lbl"><b>轉到哪個帳戶</b></div><div class="chips" id="tos"></div><input class="t" id="fee" inputmode="decimal" placeholder="手續費（選填，從轉出帳戶扣）" autocomplete="off" style="margin-bottom:12px"></div>
     <div id="catBox"><div class="lbl"><b id="catLbl">分類</b></div><div class="chips" id="cats"></div></div>
     <div class="row" style="margin-bottom:12px"><input class="t" id="note" placeholder="備註（選填）" style="flex:2"><input class="t" id="date" type="date" style="flex:1.3"></div>
     <button class="go" id="go">記下</button>
@@ -211,13 +211,13 @@ function submit(){
   if (S.type !== '轉帳' && S.type !== '市值' && !S.cat) return toast('請選分類', true);
   S.busy = true; $('go').disabled = true; $('go').textContent = '記帳中…';
   if (!S.rid) S.rid = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-  var d = {who:S.who, type:S.type, amount:amt, from:S.acc, to:S.to, cat:S.cat, note:$('note').value, date:$('date').value, rid:S.rid};
-  var keep = {amount:$('amount').value, note:$('note').value, cat:S.cat, to:S.to};
+  var d = {who:S.who, type:S.type, amount:amt, from:S.acc, to:S.to, cat:S.cat, note:$('note').value, date:$('date').value, rid:S.rid, fee:(S.type === '轉帳' ? $('fee').value.replace(/,/g, '').trim() : '')};
+  var keep = {amount:$('amount').value, note:$('note').value, cat:S.cat, to:S.to, fee:$('fee').value};
   var a = accOf(S.acc), n = parseFloat(amt);
   D.recent = [{row:0, pending:true, date:(d.date || today()).replace(/-/g, '/'), type:(S.type === '退款' ? '支出' : S.type === '市值' ? '調整' : S.type),
     amount:(S.type === '退款' ? -n : n), cur:(a ? a.currency : 'TWD'), base:0, cat:(S.type === '轉帳' ? '' : S.cat),
     from:S.acc, to:S.to, note:'記帳中…', who:S.who}].concat(D.recent);
-  $('amount').value = ''; $('note').value = ''; S.cat = ''; S.to = '';
+  $('amount').value = ''; $('note').value = ''; $('fee').value = ''; S.cat = ''; S.to = '';
   render();
   api({api:'add', d:JSON.stringify(d)}, function(res){
     S.busy = false; S.rid = ''; $('go').disabled = false; $('go').textContent = '記下';
@@ -226,7 +226,7 @@ function submit(){
   }, function(){
     $('go').textContent = '記下';
     D.recent = D.recent.filter(function(r){ return !r.pending; });
-    $('amount').value = keep.amount; $('note').value = keep.note; S.cat = keep.cat; S.to = keep.to;
+    $('amount').value = keep.amount; $('note').value = keep.note; $('fee').value = keep.fee; S.cat = keep.cat; S.to = keep.to;
     render(); toast('沒收到回應，內容已還原，再按一次「記下」（不會重複記）', true);
   });
 }
