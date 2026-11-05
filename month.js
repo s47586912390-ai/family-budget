@@ -66,7 +66,7 @@
       m.outCats.forEach(function (c) { h += kv(esc(c.name), m$(c.amount), 'sub'); });
     }
     h += '<div class="sep"></div>' + kv('計入每月可花', '<b>' + m$(m.inBudget) + '</b>');
-    if (m.target > 0) {
+    if (m.target > 0 && m.items.length) {
       var left = m.target - m.inBudget;
       h += kv('目標', m$(m.target), 'mute');
       h += kv(left >= 0 ? (off === 0 ? '還能花' : '省下') : '超支', '<b>' + m$(Math.abs(left)) + '</b>', '', left >= 0 ? 'var(--green)' : 'var(--red)');
