@@ -88,13 +88,14 @@ input.t{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;
 var API = 'https://script.google.com/macros/s/AKfycbxe_9kU_ge7FZ14slQFAaRRCwp24Fwy7FrUDuxpkiw9HI12kBP7pWKb7hDDDqTLc_Iv/exec';
 var KEY = '';
 var D = null, S = {who:'', type:'支出', acc:'', to:'', cat:'', all:false, busy:false};
-var TYPES = ['支出','收入','轉帳','退款','市值'];
+var TYPES = ['支出','收入','轉帳','退款','市值','校正'];
 var ORDER = {
   '支出':['信用卡','現金','電子支付','銀行','其他'],
   '退款':['銀行','現金','電子支付','信用卡','其他'],
   '收入':['銀行','現金','電子支付','其他','信用卡'],
   '轉帳':['銀行','現金','電子支付','其他','信用卡','投資'],
-  '市值':['投資']
+  '市值':['投資'],
+  '校正':['現金','電子支付','銀行','儲蓄','其他','信用卡']
 };
 function $(id){ return document.getElementById(id); }
 function ls(k, v){ try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
@@ -156,7 +157,7 @@ function render(){
   }; });
 
   var t = S.type;
-  $('accLbl').textContent = t === '市值' ? '更新哪個投資帳戶' : t === '收入' || t === '退款' ? '入帳到哪個帳戶' : t === '轉帳' ? '從哪個帳戶轉出' : '從哪個帳戶付';
+  $('accLbl').textContent = t === '校正' ? '校正哪個帳戶' : t === '市值' ? '更新哪個投資帳戶' : t === '收入' || t === '退款' ? '入帳到哪個帳戶' : t === '轉帳' ? '從哪個帳戶轉出' : '從哪個帳戶付';
   $('allBtn').textContent = S.all ? '只看自己的' : '顯示全部';
   $('allBtn').className = D.accounts.some(function(a){ return !mine(a); }) ? '' : 'hide';
   chips($('accs'), accList('from'), S.acc, function(n){ S.acc = n; render(); }, curTag);
@@ -164,12 +165,12 @@ function render(){
   $('toBox').className = t === '轉帳' ? '' : 'hide';
   if (t === '轉帳') chips($('tos'), accList('to').filter(function(a){ return a.name !== S.acc; }), S.to, function(n){ S.to = n; render(); }, curTag);
 
-  $('catBox').className = (t === '轉帳' || t === '市值') ? 'hide' : '';
+  $('catBox').className = (t === '轉帳' || t === '市值' || t === '校正') ? 'hide' : '';
   $('catLbl').textContent = t === '退款' ? '抵扣哪個分類' : '分類';
-  if (t !== '轉帳' && t !== '市值') chips($('cats'), D.cats[t === '收入' ? '收入' : '支出'] || [], S.cat, function(n){ S.cat = n; render(); });
+  if (t !== '轉帳' && t !== '市值' && t !== '校正') chips($('cats'), D.cats[t === '收入' ? '收入' : '支出'] || [], S.cat, function(n){ S.cat = n; render(); });
 
   var a = accOf(S.acc); $('cur').textContent = sym(a ? a.currency : 'TWD');
-  var hint = $('mvHint'); if (hint) { if (t === '市值') { var bc = null; try { bc = JSON.parse(localStorage.getItem('balCache') || 'null'); } catch (e) {} var cb = null; if (bc && a) bc.accounts.forEach(function(x){ if (x.name === a.name) cb = x; }); hint.textContent = '輸入現在的「總市值」，會自動算出漲跌記成投資損益' + (cb ? '（帳上目前 ' + sym(cb.currency) + Number(cb.balance).toLocaleString('en-US', {maximumFractionDigits:2}) + '）' : ''); hint.className = ''; } else hint.className = 'hide'; }
+  var hint = $('mvHint'); if (hint) { if (t === '市值' || t === '校正') { var bc = null; try { bc = JSON.parse(localStorage.getItem('balCache') || 'null'); } catch (e) {} var cb = null; if (bc && a) bc.accounts.forEach(function(x){ if (x.name === a.name) cb = x; }); hint.textContent = (t === '校正' ? '輸入這個帳戶「實際」有多少錢，差額會記成帳務校正，不算收入也不算花費' : '輸入現在的「總市值」，會自動算出漲跌記成投資損益') + (cb ? '（帳上目前 ' + sym(cb.currency) + Number(cb.balance).toLocaleString('en-US', {maximumFractionDigits:2}) + '）' : ''); hint.className = ''; } else hint.className = 'hide'; }
   renderBudget(); renderRecent();
 }
 function renderBudget(){
@@ -187,7 +188,7 @@ function renderRecent(){
     var inc = r.type === '收入', ref = r.type === '支出' && r.amount < 0, tr = r.type === '轉帳', adj = r.type === '調整';
     var col = r.pending ? '#bbb' : adj ? (r.amount >= 0 ? 'var(--blue)' : 'var(--red)') : inc ? 'var(--blue)' : ref ? 'var(--green)' : tr ? '#777' : (Math.abs(r.base) >= 1000 ? 'var(--red)' : '#222');
     var sign = adj ? (r.amount >= 0 ? '+' : '-') : inc || ref ? '+' : tr ? '' : '-';
-    var name = adj ? ('📈 市值・' + r.from) : tr ? (r.from + ' → ' + r.to) : ((ref ? '↩ 退款・' : '') + (r.cat || r.type));
+    var name = adj ? ((r.cat === '帳務校正' ? '🔧 校正・' : '📈 市值・') + r.from) : tr ? (r.from + ' → ' + r.to) : ((ref ? '↩ 退款・' : '') + (r.cat || r.type));
     var note = r.note && !/^退款／/.test(r.note) ? r.note : '';
     return '<div class="rec"><div class="d">' + esc(r.date.slice(5)) + '</div>' +
       '<div class="n">' + esc(name) + (note ? '<i>' + esc(note) + '</i>' : '') + '<i>' + (tr ? '' : esc(r.from)) + (r.who ? '・' + esc(r.who) : '') + '</i></div>' +
@@ -205,17 +206,17 @@ function renderRecent(){
 function submit(){
   if (S.busy) return;
   var amt = $('amount').value.replace(/,/g, '').trim();
-  if (!(parseFloat(amt) > 0)) return toast('請輸入金額', true);
+  if (S.type === '校正' ? (amt === '' || isNaN(parseFloat(amt))) : !(parseFloat(amt) > 0)) return toast('請輸入金額', true);
   if (!S.acc) return toast('請選帳戶', true);
   if (S.type === '轉帳' && !S.to) return toast('請選轉入帳戶', true);
-  if (S.type !== '轉帳' && S.type !== '市值' && !S.cat) return toast('請選分類', true);
+  if (S.type !== '轉帳' && S.type !== '市值' && S.type !== '校正' && !S.cat) return toast('請選分類', true);
   S.busy = true; $('go').disabled = true; $('go').textContent = '記帳中…';
   if (!S.rid) S.rid = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   var d = {who:S.who, type:S.type, amount:amt, from:S.acc, to:S.to, cat:S.cat, note:$('note').value, date:$('date').value, rid:S.rid, fee:(S.type === '轉帳' ? $('fee').value.replace(/,/g, '').trim() : '')};
   var keep = {amount:$('amount').value, note:$('note').value, cat:S.cat, to:S.to, fee:$('fee').value};
   var a = accOf(S.acc), n = parseFloat(amt);
-  D.recent = [{row:0, pending:true, date:(d.date || today()).replace(/-/g, '/'), type:(S.type === '退款' ? '支出' : S.type === '市值' ? '調整' : S.type),
-    amount:(S.type === '退款' ? -n : n), cur:(a ? a.currency : 'TWD'), base:0, cat:(S.type === '轉帳' ? '' : S.cat),
+  D.recent = [{row:0, pending:true, date:(d.date || today()).replace(/-/g, '/'), type:(S.type === '退款' ? '支出' : (S.type === '市值' || S.type === '校正') ? '調整' : S.type),
+    amount:(S.type === '退款' ? -n : n), cur:(a ? a.currency : 'TWD'), base:0, cat:(S.type === '校正' ? '帳務校正' : S.type === '轉帳' ? '' : S.cat),
     from:S.acc, to:S.to, note:'記帳中…', who:S.who}].concat(D.recent);
   $('amount').value = ''; $('note').value = ''; $('fee').value = ''; S.cat = ''; S.to = '';
   render();
