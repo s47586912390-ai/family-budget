@@ -6,13 +6,18 @@
     '.sep{border-top:1px solid #EEE9DE;margin:8px 0}' +
     '.bar{height:6px;border-radius:3px;background:#EEE9DE;margin:3px 0 8px}.bar i{display:block;height:6px;border-radius:3px;background:var(--sel)}' +
     '.bar.out i{background:#C8C2B4}.mtitle{font-size:16px;font-weight:700;margin-bottom:6px}' +
-    '.legend{font-size:11px;color:#999;margin-bottom:6px}';
+    '.legend{font-size:11px;color:#999;margin-bottom:6px}' +
+    '.pager{display:flex;align-items:center;justify-content:space-between;background:#fff;border-radius:14px;padding:6px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,.05)}' +
+    '.pager button{border:0;background:#ECE8DD;border-radius:10px;width:48px;height:40px;font-size:24px;color:#333;font-family:inherit}' +
+    '.pager button:disabled{opacity:.3}.pager span{font-size:17px;font-weight:700}' +
+    '.pager small{font-size:11px;color:#888;font-weight:400;margin-left:6px}';
   document.head.appendChild(css);
 
   var app = document.getElementById('app');
   var nav = document.createElement('div');
   nav.className = 'seg'; nav.id = 'view';
-  nav.innerHTML = '<button class="on" data-v="0">記帳</button><button data-v="1">本月</button><button data-v="2">上月</button>';
+  nav.innerHTML = '<button class="on" data-v="0">記帳</button><button data-v="1">月報</button>';
+  var OFF = 0;
   app.insertBefore(nav, app.firstChild);
   var mv = document.createElement('div');
   mv.className = 'hide'; mv.id = 'monthView';
@@ -25,7 +30,7 @@
       if (el === mv) el.className = v == 0 ? 'hide' : '';
       else el.style.display = v == 0 ? '' : 'none';
     });
-    if (v != 0) load(v == 1 ? 0 : -1);
+    if (v != 0) { OFF = 0; load(OFF); }
   }
   nav.onclick = function (e) { var b = e.target.closest('button'); if (b) show(b.getAttribute('data-v')); };
 
@@ -34,13 +39,27 @@
     return '<div class="kv ' + (cls || '') + '"><span>' + k + '</span><span' + (vcol ? ' style="color:' + vcol + '"' : '') + '>' + v + '</span></div>';
   }
 
+  function ymOf(off) {
+    var d = new Date(); d = new Date(d.getFullYear(), d.getMonth() + off, 1);
+    var mm = d.getMonth() + 1; return d.getFullYear() + '/' + (mm < 10 ? '0' : '') + mm;
+  }
+  function pager(off) {
+    return '<div class="pager"><button data-d="-1">‹</button><span>' + ymOf(off) +
+      (off === 0 ? '<small>本月</small>' : off === -1 ? '<small>上月</small>' : '') +
+      '</span><button data-d="1"' + (off >= 0 ? ' disabled' : '') + '>›</button></div>';
+  }
+  mv.onclick = function (e) {
+    var b = e.target.closest('.pager button'); if (!b || b.disabled) return;
+    OFF = Math.min(0, OFF + Number(b.getAttribute('data-d'))); load(OFF);
+  };
+
   function load(off) {
-    mv.innerHTML = '<div class="load">載入中…</div>';
-    api({ api: 'month', off: off }, function (m) { render(m, off); }, function () { mv.innerHTML = ''; });
+    mv.innerHTML = pager(off) + '<div class="load">載入中…</div>';
+    api({ api: 'month', off: off }, function (m) { if (off === OFF) render(m, off); }, function () { mv.innerHTML = pager(off); });
   }
 
   function render(m, off) {
-    var h = '<div class="card"><div class="mtitle">📊 ' + esc(m.ym) + ' 收支</div>';
+    var h = pager(off) + '<div class="card"><div class="mtitle">📊 ' + esc(m.ym) + ' 收支</div>';
     h += kv('實際總花費', '<b>' + m$(m.total) + '</b>');
     if (m.outCats.length) {
       h += kv('－ 不計入每月可花', m$(m.outBudget), 'mute');
